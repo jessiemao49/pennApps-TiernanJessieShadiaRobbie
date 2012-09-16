@@ -7,6 +7,7 @@ var artistArray = new Array();
 var artistArrayCondensed = new Array();
 var artistArrayCompiled = new Array();
 var artistMap = new Map();
+var topTenArtists = new Array();
 
 var userIndex = 0;
 
@@ -160,7 +161,7 @@ function createGuestList(response) {
 }
 
 // pulls last 50 music (max) listens from attendees
-function createArtistMap(response) {
+function createArtistList(response) {
 	var index = 0;
 
 	var j = 0;
@@ -171,22 +172,27 @@ function createArtistMap(response) {
 		}
 	console.log(artistArray);
 
-		// array of 50 possibly repeating artists need to condense
-		for (int i = 0; i < artistArray.length; i++) {
-			var artistRepeated = false;
-			for (int j = 0; j < artistArrayCondensed.length; j++) {
-				if (artistArray[i] == artistArrayCondensed[j]) {
-					artistRepeated = true;
-				}
-			}
-			if (!artistRepeated) {
-				artistArray[i] = artistArrayCondensed[index];
-				index++;
+}
+
+function condenseAndCompileList() {
+	// array of 50 possibly repeating artists need to condense
+	for (var i = 0; i < artistArray.length; i++) {
+		var artistRepeated = false;
+		for (var j = 0; j < artistArrayCondensed.length; j++) {
+			if (artistArray[i] == artistArrayCondensed[j]) {
+				artistRepeated = true;
 			}
 		}
+		if (!artistRepeated) {
+			artistArray[i] = artistArrayCondensed[index];
+			index++;
+		}
+	}
 	//add array to long array
 	artistArrayCompiled = artistArrayCompiled.concat(artistArrayCondensed);
+}
 
+function createArtistMap(){
 	//add artists to map
 	var count = 0;
 	for (var i = 0; i < artistArrayCompiled.length; i++) {
@@ -198,22 +204,50 @@ function createArtistMap(response) {
 		}
 		artistMap.put(i, new Array(artistArrayCompiled[i], count));
 	}
-	// now we have a map with key (0,1,2,3, ) and value [artist, count]
-	console.log(artistMap.showMe); 
+	// now we have a map with key (0,1,2,3) and value [artist, count]
+	console.log(artistMap.showMe);
+}
 
+
+function mapToTopTen() {
+	// sorts map by popularity
+	var mapSorted = false;
+	while (!mapSorted) {
+		mapSorted = true;
+		for (var i = 0; i < artistMap.size-1; i++) {
+			var value1 = artistMap.get(i);
+			var value2 = artistMap.get(i+1);
+			if (value1[1] < value2[1]) {
+				artistMap.put(i, value2);
+				artistMap.put(i+1, value1);
+				mapSorted = false;
+			}
+		}
 	}
-
-
-
-function main() {
-	FB.api('/me/events', processEvents);
-	// code here that display the events and asks user to pick  
-	FB.api('/selectedEventID/attending', createGuestList);
-	for (userIndex = 0; userIndex < numGuests; userIndex++){
-		var guestID = guestArray[userIndex];
-		FB.api('/guestID/music.listens', createArtistMap);
+	//takes ten most popular artists names and put it into an array in order
+	for (var i = 0; i < 10; i++) {
+		topTenArtists[i] = artistMap.get(i)[0];
 	}
 }
 
 
+function main() {
+	FB.api('/me/events', processEvents);
+	// code here that display the events and asks user to pick
+	FB.api('/selectedEventID/attending', createGuestList);
+	for (userIndex = 0; userIndex < numGuests; userIndex++){
+		var guestID = guestArray[userIndex];
+		FB.api('/guestID/music.listens', createArtistList);
+	}
+	condenseAndCompileList();
+	createArtistMap();
+	mapToTopTen();
 
+	$.ajax({
+		url: 'http://ws.spotify.com/search/1/artist',
+		data: {q: 'foo', page: 1 },
+		success: function(response){
+			return;
+		}
+	});
+}
